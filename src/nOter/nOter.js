@@ -27,6 +27,8 @@
         pop: arr.pop,
         shift: arr.shift,
         unshift: arr.unshift,
+        indexOf: arr.indexOf,
+        lastIndexOf: arr.lastIndexOf,
         splice: arr.splice
     };
     //static
@@ -141,6 +143,10 @@
     };
     init.prototype = oter.fn;
     oter.fn.extend({
+        eq: function(index){ return this.constructor(oter.eq(this, index)); },
+        get: function(index){ return oter.eq(this, index); },
+        first: function(){ return this.get(0); },
+        last: function(){ return this.length > 0 ? this.get(this.length - 1) : undefined; },
         text: function(text){
             text = text || undefined;
             if(text){
@@ -182,19 +188,41 @@
                 return html;
             }
         },
-        attr: function(key, value){
-            if (this.dom && typeof (this.dom) == "object" && this.dom.length > 0) {
-                if (arguments.length == 1 && key) {
-                    var tx = "";
-                    for (var i in this.dom)
-                        tx += this.dom[i].getAttribute(key) + " ";
-                    return tx;
-                }
-                else if (arguments.length == 2 && key && value)
-                    for (var i in this.dom)
-                        this.dom[i].setAttribute(key, value);
+        attr: function(){
+            var len = arguments.length, i = 0, text;
+            var deep = arguments[i++], key = arguments[i++], value;
+            if(!oter.types._boolen.test(oter.typeof(deep, 1))){
+                key = deep;
+                deep = false;
+                i--;
             }
-            return this;
+            if(len > i) value = arguments[i];
+            if(key == undefined) return false;
+            console.log(deep, key, value);
+            if(value != undefined){
+                oter.each(this, function(key, value){
+                    oter.attr(this, key, value);
+                }, {key: key, value: value});
+                return this;
+            }
+            else {
+                value = "";
+                var i = 0;
+                if(deep){
+                    oter.each(this, function(key){
+                        var text = oter.attr(this, key);
+                        if(text === false || text == null) i++;
+                        else value += text + ";";
+                    }, {key: key});
+                    if(value == "" && i == this.length) return undefined;
+                    else return value.length > 0 ? value.substr(0, value.length - 1) : value;
+                }
+                else {
+                    value = oter.attr(this.first(), key);
+                    if(value === false || value == null) return undefined;
+                    else return value.length > 0 ? value.substr(0, value.length - 1) : value;
+                }
+            }
         },
         append: function(dom){
             var type = oter.typeof(dom, 1);
@@ -293,8 +321,8 @@
         },
         each: function(list, callback, args){
             var type = oter.typeof(list, 1);
-            args = oter.makeArray(args);
             if(type == "undefined" || typeof callback != "function") return list;
+            args = oter.makeArray(args);
             if(oter.isArrayLike(list))
                 for(var i = 0, z = list.length; i < z; i++) 
                     if(callback.apply(list[i], args) == false) break;
@@ -303,13 +331,30 @@
         map: function(list, callback, args){
             var _list = [];
             var type = oter.typeof(list, 1);
-            args = oter.makeArray(args);
             if(type == "undefined" || typeof callback != "function") return _list;
+            args = oter.makeArray(args);
             if(oter.isArrayLike(list))
                 for(var i = 0, z = list.length; i < z; i++) 
                     if(callback.apply(list[i], args)) 
                         _list.push(list[i]);
             return _list;
+        },
+        attr: function(elem, key, value){
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type) || key == undefined) return false;
+            if(value == undefined) return elem.getAttribute(key.toString());
+            else elem.setAttribute(key.toString(), value.toString());
+        },
+        eq: function(list, index){
+            var type = oter.typeof(list, 1);
+            if(type == "undefined") return undefined;
+            else if(oter.isArrayLike(list)) return list[index];
+            else if(oter.types._object.test(type)) {
+                var i = 0;
+                for(var name in list) if(i++ == index) return list[name];
+                return undefined;
+            }
+            else return list;
         }
     });
 }(window);
