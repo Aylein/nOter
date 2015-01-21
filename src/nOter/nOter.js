@@ -39,6 +39,7 @@
         _window: /^Window$/,
         _document: /^HTML(Collection|AllCollection|Document)$/, //["HTMLCollection", "HTMLAllCollection", "HTMLDocument"],
         _element: /^HTML\S+Element$/, //["HTMLImageElement", "HTMLDivElement"],
+        _domtoken: /^DOMTokenList$/,
         _function: /^[f|F]unction$/, //["function", "Function"],
         _number: /^[n|N]unction$/, //["number", "Number"],
         _string: /^[s|S]tring$/, //["string", "String"],
@@ -147,44 +148,84 @@
         get: function(index){ return oter.eq(this, index); },
         first: function(){ return this.get(0); },
         last: function(){ return this.length > 0 ? this.get(this.length - 1) : undefined; },
-        text: function(text){
-            text = text || undefined;
-            if(text){
+        clear: function(){ return oter.each(this, function(){ oter.clear(this); }), this; },
+        addClass: function(className){
+            var type = oter.typeof(className, 1);
+            if(oter.types._array.test(type))
+                oter.each(this, function(className){
+                    for(var i = 0, z = className.length; i < z; i++)
+                        if(className[i] != undefined)
+                            oter.addClass(this, className[i].toString());
+                }, {name: className});
+            else 
+                oter.each(this, function(className){
+                    oter.addClass(this, className);
+                }, {name: className.toString()});
+            return this;
+        },
+        removeClass: function(className){
+            oter.each(this, function(className){
+                oter.removeClass(this, className);
+            }, {name: className});
+            return this;
+        },
+        text: function(){
+            var len = arguments.length, i = 0;
+            var deep = arguments[i++], text = arguments[i++];
+            if(!oter.types._boolen.test(oter.typeof(deep, 1))){
+                text = deep;
+                deep = false;
+            }
+            if(text != undefined){
                 oter.each(this, function(text){
-                    if(this.innerText != undefined) this.innerText = text.toString();
-                    else if(this.textContent != undefined) this.textContent = text;
-                }, text);
+                    oter.text(this, text);
+                }, {text: text});
                 return this;
             }
             else{
-                text = "";
-                oter.each(this, function(){
-                    if(this.innerText != undefined) text += this.innerText;
-                    else if(this.textContent != undefined) text += this.textContent;
-                });
+                if(deep){
+                    var i = 0, text = [];
+                    oter.each(this, function(){
+                        var val = oter.text(this);
+                        if(val === false || val == null) i++;
+                        else text.push(val);
+                    });
+                    if(text.length == 0 && i == this.length) return undefined;
+                }
+                else {
+                    text = oter.text(this.first());
+                    if(text === false || text == null) return undefined;
+                }
                 return text;
             }
         },
-        html: function(html){
-            html = html || undefined;
-            if(html){
-                var type = oter.typeof(html, 1);
-                if(oter.types._string.test(type)){
-                    oter.each(this, function(html){
-                        if(this.innerHTML != undefined) this.innerHTML = html.toString();
-                    }, html);
-                    return this;
-                }
-                else if((oter.types._object.test(type) && oter.constructor == html.constructor) || 
-                    oter.types_element.test(type)){
-                    return this.append(html);
-                }
+        html: function(){
+            var len = arguments.length, i = 0;
+            var deep = arguments[i++], html = arguments[i++];
+            if(!oter.types._boolen.test(oter.typeof(deep, 1))){
+                html = deep;
+                deep = false;
+            }
+            if(html != undefined){
+                oter.each(this, function(html){
+                    oter.html(this, html);
+                }, {html: html});
+                return this;
             }
             else{
-                html = "";
-                oter.each(this, function(){
-                    if(this.innerHTML != undefined) html += this.innerHTML;
-                });
+                if(deep){
+                    var i = 0, html = [];
+                    oter.each(this, function(){
+                        var val = oter.html(this);
+                        if(val === false || val == null) i++;
+                        else html.push(val);
+                    });
+                    if(html.length == 0 && i == this.length) return undefined;
+                }
+                else {
+                    html = oter.html(this.first());
+                    if(html === false || html == null) return undefined;
+                }
                 return html;
             }
         },
@@ -198,7 +239,6 @@
             }
             if(len > i) value = arguments[i];
             if(key == undefined) return false;
-            console.log(deep, key, value);
             if(value != undefined){
                 oter.each(this, function(key, value){
                     oter.attr(this, key, value);
@@ -206,22 +246,20 @@
                 return this;
             }
             else {
-                value = "";
-                var i = 0;
                 if(deep){
+                    var i = 0, value = [];
                     oter.each(this, function(key){
                         var text = oter.attr(this, key);
                         if(text === false || text == null) i++;
-                        else value += text + ";";
+                        else vals.push(text);
                     }, {key: key});
-                    if(value == "" && i == this.length) return undefined;
-                    else return value.length > 0 ? value.substr(0, value.length - 1) : value;
+                    if(value.length == 0 && i == this.length) return undefined;
                 }
                 else {
                     value = oter.attr(this.first(), key);
                     if(value === false || value == null) return undefined;
-                    else return value.length > 0 ? value.substr(0, value.length - 1) : value;
                 }
+                return value;
             }
         },
         append: function(dom){
@@ -254,6 +292,10 @@
         isArray: arr.isArray,
         trim: function(text){    
             return text == null ? "" : (text + "").replace(rtrim, "");
+        },
+        replace: function(src, target, rep){
+            if(src == undefined || target == undefined || rep == undefined) return src;
+            return src.toString().replace(new RegExp(target, "g"), rep.toString());
         },
         regex: {
             selector: {
@@ -309,11 +351,11 @@
             if(element != undefined && oter.types._object.test(oter.typeof(opt, 1))){
                 for(var name in opt) {
                     if(opt[name] != undefined) {
-                        if(name != "text") element.setAttribute(name, opt[name]);
-                        else {
+                        if(name == "text") {
                             if(element.innerText != undefined) element.innerText = opt[name].toString();
                             else if(element.textContent != undefined) element.textContent = opt[name];
                         }
+                        else element.setAttribute(name, opt[name]);
                     }
                 }
             }
@@ -339,11 +381,87 @@
                         _list.push(list[i]);
             return _list;
         },
+        clear: function(elem){
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type)) return false;
+            if(elem.lastChild) elem.removeChild(elem.lastChild);
+            return elem;
+        },
+        addClass: function(elem, className){
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type) || className == undefined) return false;
+            if(elem.classList) elem.classList.add(className.toString());
+            else if(elem.className) elem.className += " " + className.toString();
+            return elem;
+        },
+        removeClass: function(elem, className){
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type) || className == undefined) return false;
+            if(elem.classList)
+                elem.classList.remove(className.toString());
+            else{
+                var list = elem.className.split(" ");
+                for(var i = 0, z = list.length; i < z; i++)
+                    if(list[i] == className.toString())
+                        list.splice(i, 1);
+                elem.className = list.join(" ");
+            } 
+            return elem;
+        },
+        text: function(elem, text){
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type)) return false;
+            if(text != undefined){
+                if(elem.innerText != undefined) elem.innerText = text.toString();
+                else if(elem.textContent != undefined) elem.textContent = text.toString();
+                else return false;
+            }
+            else{
+                if(elem.innerText != undefined) return elem.innerText;
+                else if(elem.textContent != undefined) return elem.textContent;
+                else return false;
+            }
+        },
+        html: function(elem, html){
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type)) return false;
+            if(html != undefined){
+                oter.clear(elem);
+                type = oter.typeof(html, 1);
+                if(oter.types._element.test(type)) {
+                    if(elem.innerHTML != undefined) elem.innerText = html.toString();
+                    else return false;
+                }
+                else if(oter.isArrayLike(html)){
+                    oter.each(html, function(){
+                        if(oter.types._element.test(oter.typeof(this, 1))) 
+                            elem.append(this);
+                    });
+                }
+                else if(oter.types._string.test(type)){
+
+                }
+                else return false;
+            }
+            else{
+                if(elem.innerHTML != undefined) return elem.innerText;
+                else return false;
+            }
+        },
         attr: function(elem, key, value){
             var type = oter.typeof(elem, 1);
             if(!oter.types._element.test(type) || key == undefined) return false;
             if(value == undefined) return elem.getAttribute(key.toString());
-            else elem.setAttribute(key.toString(), value.toString());
+            else oter.types._boolen.test(oter.typeof(value)) ? 
+                (value ? elem.setAttribute(key.toString(), key.toString()) : oter.removeAttr(elem, key)) :
+                elem.setAttribute(key.toString(), value.toString());
+            return elem;
+        },
+        removeAttr: function(elem, key){
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type) || key == undefined) return false;
+            elem.removeAttribute(key.toString());
+            return elem;
         },
         eq: function(list, index){
             var type = oter.typeof(list, 1);
