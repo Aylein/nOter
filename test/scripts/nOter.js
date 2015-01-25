@@ -33,11 +33,11 @@
     };
     //static
     oter.types = {
-        _undefined: /^(undefined|Undefined|null)$/, //["undefined", "Undefined", "null"],
+        _undefined: /^undefined|Undefined|null$/, //["undefined", "Undefined", "null"],
         _object: /^[o|O]bject$/, //["object", "Object"],
         _array: /^Array$/, //["Array"],
         _window: /^Window$/,
-        _document: /^HTML(Collection|AllCollection|Document)$/, //["HTMLCollection", "HTMLAllCollection", "HTMLDocument"],
+        _document: /^NodeList|HTMLCollection|HTMLAllCollection|HTMLDocument$/, //["HTMLCollection", "HTMLAllCollection", "HTMLDocument"],
         _element: /^HTML\S+Element$/, //["HTMLImageElement", "HTMLDivElement"],
         _domtoken: /^DOMTokenList$/,
         _function: /^[f|F]unction$/, //["function", "Function"],
@@ -109,11 +109,18 @@
         return this;
     };
     //selector
-    var selectionOption = {
-
-    };
-    var selection = function(select){
-
+    var selection = function(deep, select){
+        var type = oter.typeof(deep, 1);
+        var list = [];
+        if(type == "undefined") return list;
+        else if(!oter.types._boolen.test(type)){
+            select = deep;
+            deep = false;
+        }
+        if(select == undefined) return list;
+        if(!deep && document.querySelectorAll) return document.querySelectorAll(select);
+        var reg_name = "a-zA-Z0-9\\-_";
+        var reg_select = "([" + reg_name + "]*)([.#]?[" + reg_name + "]+)";
     };
     //init
     var init = oter.fn.init = function(select){
@@ -136,7 +143,27 @@
             return _list.push(select), oter.merge(this, _list);
         }
         else if(oter.types._string.test(type)){
-            return oter.merge(this, selection(select));
+            if(oter.regex.selector._tag.test(select)){
+                var no = {
+                    tag: RegExp.$1,
+                    attr: RegExp.$2,
+                    text: RegExp.$3
+                }, list = [];
+                list.push(oter.makeElement(no.tag, {text: no.text}));
+                var ar = no.attr.match(oter.regex.selector._attrs);
+                if(ar != undefined && ar.length > 0){
+                    for(var i = 0, z = ar.length; i < z; i++)
+                    {
+                        if(ar[i].indexOf("=") > -1){
+                            oter.attr(list[0], ar[i].split("=")[0], ar[i].split("=")[1].replace(/"/g, ""));
+                        }
+                        else
+                            oter.attr(list[0], ar[i], true);
+                    }
+                }
+                return oter.merge(this, list);
+            }
+            else oter.merge(this, selection(select));
         }
         else{
             return this;
@@ -267,11 +294,13 @@
             if(type == "undefined") return this;
             else if((oter.types._object.test(type) && this.constructor == dom.constructor)|| 
                 oter.types._document.test(type)){
-                oter.each(this, function(dom){
-                    for(var i = 0, z = dom.length; i < z; i++)
-                        if(this.appendChild != undefined) this.appendChild(dom[i].cloneNode(1));
-                }, dom);
-                return this;
+                var _list = [];
+                _list.push(dom);
+                return oter.each(this, function(dom){
+                    for(var i = 0, z = dom.length; i < z; i++){
+                        oter.append(this, dom[i]);
+                    }
+                }, _list);
             }
             else if(oter.types._element.test(type)){
                 oter.each(this, function(dom){
@@ -279,8 +308,30 @@
                 }, dom);
                 return this;
             }
-            else if(oter.types._string.test(type)){
-
+            else if(oter.types._string.test(type) && oter.regex.selector._tag.test(dom)){
+                var no = {
+                    tag: RegExp.$1,
+                    attr: RegExp.$2,
+                    text: RegExp.$3
+                }, _list = [], list = [];
+                _list.push(oter.makeElement(no.tag, {text: no.text}));
+                var ar = no.attr.match(oter.regex.selector._attrs);
+                if(ar != undefined && ar.length > 0){
+                    for(var i = 0, z = ar.length; i < z; i++)
+                    {
+                        if(ar[i].indexOf("=") > -1){
+                            oter.attr(_list[0], ar[i].split("=")[0], ar[i].split("=")[1].replace(/"/g, ""));
+                        }
+                        else
+                            oter.attr(_list[0], ar[i], true);
+                    }
+                }
+                list.push(_list);
+                return oter.each(this, function(dom){
+                    for(var i = 0, z = dom.length; i < z; i++){
+                        oter.append(this, dom[i]);
+                    }
+                }, list);
             }
             else return this;
         },
@@ -299,12 +350,13 @@
         },
         regex: {
             selector: {
-                _tag: /^(\S+)$/,
+                _select: /()(:)\[()\]/g,
+                _tag: /^<([a-z]+)([^<>]*)>([^<>]*)/,
                 _id: /^#(\S+)$/,
                 _class: /^.(\S+)$/,
                 _type: /\(([\S\s]+)\)/,
-                _attr: /^\[([\S\s]+)\]$/,
-                _attrs: /([a-z\.\-_"'\d]+=[a-z\.\:-_#"'\d\(\)]+)/g
+                _attr: /^([\S]*)=([\S]*)|([\S]*)="([\S]*)"$/,
+                _attrs: /([\S]*="[\s\S]*")|(\S)*[^\s]|([\S]*=[\s]*)[^\s]/g
             },
             navi: {
                 isWinNT: /Windows NT (\d+.\d+)[\.\d+]*/,
@@ -348,6 +400,25 @@
             tag = tag || undefined, opt = opt || undefined;
             var element;
             if(oter.tags.indexOf(tag) > -1) element = document.createElement(tag);
+            else if(oter.regex.selector._tag.test(tag)){
+                var no = {
+                    tag: RegExp.$1,
+                    attr: RegExp.$2,
+                    text: RegExp.$3
+                };
+                element = oter.makeElement(no.tag, {text: no.text});
+                var ar = no.attr.match(oter.regex.selector._attrs);
+                if(ar != undefined && ar.length > 0){
+                    for(var i = 0, z = ar.length; i < z; i++)
+                    {
+                        if(ar[i].indexOf("=") > -1){
+                            oter.attr(element, ar[i].split("=")[0], ar[i].split("=")[1].replace(/"/g, ""));
+                        }
+                        else
+                            oter.attr(element, ar[i], true);
+                    }
+                }
+            }
             if(element != undefined && oter.types._object.test(oter.typeof(opt, 1))){
                 for(var name in opt) {
                     if(opt[name] != undefined) {
@@ -406,6 +477,15 @@
                         list.splice(i, 1);
                 elem.className = list.join(" ");
             } 
+            return elem;
+        },
+        append: function(elem, _elem){
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type)) return false;
+            type = oter.typeof(_elem, 1);
+            if(!oter.types._element.test(type)) return false;
+            if(elem.appendChild == undefined) return false;
+            elem.appendChild(_elem.cloneNode(1));
             return elem;
         },
         text: function(elem, text){
