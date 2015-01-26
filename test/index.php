@@ -12,7 +12,7 @@
     <div class="imgbar" id="e" style="width: 600px; height: 25px; margin: 0 auto; background-color: #00ffff; text-align: center;"></div>
 </body>
 <script src="scripts/jquery-1.10.2.min.js"></script>
-<script src="scripts/nOter.js"></script>
+<script src="scripts/nOter.min.js"></script>
 <script>
     $.doler();
 </script>

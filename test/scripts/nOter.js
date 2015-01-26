@@ -52,7 +52,9 @@
         "menu menuitem meta meter nav noframes noscript object ol optgroup option output p param pre progress q rp " + 
         "rt ruby s samp script section select small source span strike strong style sub summary sup table tbody td " + 
         "textarea tfoot th thead time title tr track tt u ul var video wbr").split(" ");
-    oter.attrs = ("class id name style type rows cols width height ").split(" ");
+    oter.attrs = ("class id name style type rows cols width height").split(" ");
+    oter.eventType = ("click dblclick mousedown mouseup mouseover mouseout mousemove keypress keydown keyup" +
+        "blur focus change reset submit").split(" ");
     oter.isArrayLike = function(array){
         var type = oter.typeof(array, 1);
         if(type == "undefined") return false;
@@ -337,7 +339,19 @@
         },
         each: function (callback, args) {
             return oter.each(this, callback, args);
-        }
+        },
+        addEvent: function(eventName, callback, bs){
+            oter.each(this, function(eventName, callback, bs){
+                oter.addEvent(this, eventName, callback, bs);
+            }, {eventName: eventName, callback: callback, bs: bs});
+            return this;
+        },
+        click: function(callback, bs){
+            return this.addEvent("click", callback, bs);
+        },
+        dblClick: function(callback, bs){
+            return this.addEvent("dblclick", callback, bs);
+        },
     });
     oter.extend({
         isArray: arr.isArray,
@@ -458,11 +472,17 @@
             if(elem.lastChild) elem.removeChild(elem.lastChild);
             return elem;
         },
+        hasClass: function(elem, className){
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type) || className == undefined) return false;
+            return elem.className.match(new RegExp('(\\s|^)' + className + '(\\s|$)'));
+        },
         addClass: function(elem, className){
             var type = oter.typeof(elem, 1);
             if(!oter.types._element.test(type) || className == undefined) return false;
             if(elem.classList) elem.classList.add(className.toString());
-            else if(elem.className) elem.className += " " + className.toString();
+            else if(!oter.hasClass(elem, className))
+                elem.className += " " + className.toString();
             return elem;
         },
         removeClass: function(elem, className){
@@ -471,11 +491,8 @@
             if(elem.classList)
                 elem.classList.remove(className.toString());
             else{
-                var list = elem.className.split(" ");
-                for(var i = 0, z = list.length; i < z; i++)
-                    if(list[i] == className.toString())
-                        list.splice(i, 1);
-                elem.className = list.join(" ");
+                var reg = new RegExp('(\\s|^)' + elem.className + '(\\s|$)');
+                elem.className = elem.className.replace(reg, "");
             } 
             return elem;
         },
@@ -553,6 +570,35 @@
                 return undefined;
             }
             else return list;
+        },
+        addEvent: function(elem, eventName, callback, bs){
+            if(arguments.length < 3) return false;
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type) || oter.eventType.indexOf(eventName) <= -1 || 
+                typeof callback != "function") return false;
+            bs = bs || false;
+            if(elem.addEventListener) elem.addEventListener(eventName, callback, bs);
+            else if(elem.attachEvent) elem.attachEvent("on" + eventName, callback);
+            else return false;
+            return elem;
+        },
+        degaEvent: function(elem, tag, eventName, callback, bs){
+            if(arguments.length < 4) return false;
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type) || oter.tags.indexOf(tag) <= -1 || 
+                oter.eventType.indexOf(eventName) <= -1 || typeof callback != "function") return false;
+            bs = bs || false;
+            oter.addEvent(elem, eventName, function(){
+                var event = event || window.event;
+                var type = oter.typeof(tag, 1);
+                var tar = event.srcElement || event.target;
+                if(!oter.types._string.test(type)) return false;
+                if(oter.tags.indexOf(tag) && tar.tagName == tag) callback.call();
+                else if(oter.regex.selector._id.test(tag) && oter.attr(tar, "id") == tag) callback.call();
+                else if(oter.regex.selector._class.test(tag) && oter.hasClass(tar, tag)) callback.call();
+                else return false;
+            }, bs);
+            return elem;
         }
     });
 }(window);
