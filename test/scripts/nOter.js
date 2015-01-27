@@ -469,7 +469,7 @@
         clear: function(elem){
             var type = oter.typeof(elem, 1);
             if(!oter.types._element.test(type)) return false;
-            if(elem.lastChild) elem.removeChild(elem.lastChild);
+            while(elem.lastChild) elem.removeChild(elem.lastChild);
             return elem;
         },
         hasClass: function(elem, className){
@@ -585,19 +585,21 @@
         degaEvent: function(elem, tag, eventName, callback, bs){
             if(arguments.length < 4) return false;
             var type = oter.typeof(elem, 1);
-            if(!oter.types._element.test(type) || oter.tags.indexOf(tag) <= -1 || 
-                oter.eventType.indexOf(eventName) <= -1 || typeof callback != "function") return false;
+            if(!oter.types._element.test(type) || oter.eventType.indexOf(eventName) <= -1 || 
+                typeof callback != "function") return false;
             bs = bs || false;
-            oter.addEvent(elem, eventName, function(){
-                var event = event || window.event;
-                var type = oter.typeof(tag, 1);
-                var tar = event.srcElement || event.target;
-                if(!oter.types._string.test(type)) return false;
-                if(oter.tags.indexOf(tag) && tar.tagName == tag) callback.call();
-                else if(oter.regex.selector._id.test(tag) && oter.attr(tar, "id") == tag) callback.call();
-                else if(oter.regex.selector._class.test(tag) && oter.hasClass(tar, tag)) callback.call();
-                else return false;
-            }, bs);
+            !function(tag, eventName, callback){
+                oter.addEvent(elem, eventName, function(){
+                    var event = event || window.event;
+                    var type = oter.typeof(tag, 1);
+                    var tar = event.srcElement || event.target;
+                    if(!oter.types._string.test(type) || tag.length < 1) return false;
+                    if(oter.tags.indexOf(tag) > -1 && tar.tagName.toLowerCase() == tag) callback();
+                    else if(oter.regex.selector._id.test(tag) && oter.attr(tar, "id") == tag.substr(1)) callback();
+                    else if(oter.regex.selector._class.test(tag) && oter.hasClass(tar, tag.substr(1))) callback();
+                    else return false;
+                }, bs);
+            }(tag, eventName, callback);
             return elem;
         }
     });
