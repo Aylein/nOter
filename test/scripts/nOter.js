@@ -258,6 +258,12 @@
                 return html;
             }
         },
+        style: function(styleName, style){
+            oter.each(this, function(){
+                oter.style(this, styleName, style);
+            }, {styleName: styleName, style: style});
+            return this;
+        },
         attr: function(){
             var len = arguments.length, i = 0, text;
             var deep = arguments[i++], key = arguments[i++], value;
@@ -545,6 +551,13 @@
                 else return false;
             }
         },
+        style: function(elem, styleName, style){
+            var type = oter.typeof(elem, 1);
+            if(!oter.types._element.test(type) || styleName == undefined) return false;
+            if(style == undefined) return elem.style[styleName.toString()];
+            else elem.style[styleName.toString()] = style.toString();
+            return elem;
+        },
         attr: function(elem, key, value){
             var type = oter.typeof(elem, 1);
             if(!oter.types._element.test(type) || key == undefined) return false;
@@ -603,4 +616,168 @@
             return elem;
         }
     });
+    //browser
+    var navi = function() {
+        this.en = undefined;
+        this.env = undefined;
+        this.bs = undefined;
+        this.bsv = undefined;
+        this.os = undefined;
+    };
+    var browser = function() {
+        var ua = window.navigator.userAgent;
+        var na = new navi();
+        if (window.opera) {
+            na.bs = "Opera";
+            na.bsv = window.opera.version();
+        } else if (oter.regex.navi.isAWK.test(ua)) {
+            na.en = "AppleWebKit";
+            na.env = RegExp.$1;
+            if (oter.regex.navi.isOpera.exec(ua)) {
+                na.bs = "Opera";
+                na.bsv = RegExp.$1;
+            } else if (oter.regex.navi.isChrome.exec(ua)) {
+                na.bs = "Chrome";
+                na.bsv = RegExp.$1;
+            } else if (oter.regex.navi.isSafari.exec(ua)) {
+                na.bs = "Safari";
+                na.bsv = RegExp.$1;
+            }
+        } else if (oter.regex.navi.isGecko.test(ua)) {
+            na.en = "Gecko";
+            na.env = RegExp.$1;
+            if (oter.regex.navi.isFireFox.exec(ua)) {
+                na.bs = "FireFox";
+                na.bsv = RegExp.$1;
+            }
+        } else if (oter.regex.navi.isIE.test(ua)) {
+            na.en = "MSIE";
+            na.env = RegExp.$1;
+            na.bs = "IE";
+            na.bsv = RegExp.$1;
+        } else if (oter.regex.navi.isTrident.test(ua)) {
+            na.en = "Trident";
+            na.env = RegExp.$1;
+            na.bs = "IE"
+            switch (na.env) {
+                case "4.0":
+                    na.bsv = "8.0";
+                    break;
+                case "5.0":
+                    na.bsv = "9.0";
+                    break;
+                case "6.0":
+                    na.bsv = "10.0";
+                    break;
+                case "7.0":
+                    na.bsv = "11.0";
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (oter.regex.navi.isWinNT.test(ua)) {
+            switch (RegExp.$1) {
+                case "5.0":
+                    na.os = "Windows 2000";
+                    break;
+                case "5.1":
+                    na.os = "Windows XP";
+                    break;
+                case "6.0":
+                    na.os = "Windows Vista";
+                    break;
+                case "6.1":
+                    na.os = "Windows 7";
+                    break;
+                case "6.2":
+                    na.os = "Windows 8";
+                    break;
+                case "6.3":
+                    na.os = "Windows 8.1";
+                    break;
+                default:
+                    na.os = "Windows NT " + RegExp["$2"];
+                    break;
+            }
+        } else if (oter.regex.navi.isLikeMac.test(ua)) {
+            if (oter.regex.navi.isIPhone.test(ua)) {
+                na.os = "IPhone OS " + RegExp.$1;
+            }
+            if (oter.regex.navi.isIpad.test(ua)) {
+                na.os = "iPad CPU OS " + RegExp.$1;
+            }
+        } else if (oter.regex.navi.isMac.test(ua)) {
+            if (oter.regex.navi.isIPhone.test(ua)) {
+                na.os = "Mac OS X " + RegExp.$1;
+            }
+        }
+        return na;
+    };
+    navi.prototype = {
+        toString: function() {
+            return "Rendering Engine : " + (this.en||"") + " " + (this.env||"") + ", Browser : " +  (this.bs||"") + " " + (this.bsv||"")  + ", Operating System : " + (this.os||"");
+        }
+    };
+    var makeAllDoc = function(elem){
+        var chi = elem.children, _list = [];
+        if(chi && chi.length > 0){
+            for(var i = 0, z = chi.length; i < z; i++){
+                _list.push(chi[i]);
+                oter.merge(_list, makeAllDoc(chi[i]));
+            }
+        }
+        console.log(_list);
+        return _list;
+    };
+    oter.extend({
+        navi: browser(),
+        allDoc: function(deep){
+            deep = deep || false;
+            var doc = document.all, _list = [];
+            console.log(!deep && doc.length);
+            if(!deep && doc.length){
+                if(doc.length > 0)
+                    for(var i = 0, z = doc.length; i < z; i++)
+                        _list.push(doc[i]);
+            }
+            else _list = makeAllDoc(document);
+            return _list;
+        },
+        loadXml: function(xmlString){
+            var xmlDoc=null;
+            //判断浏览器的类型
+            //支持IE浏览器 
+            if(!window.DOMParser && window.ActiveXObject){   //window.DOMParser 判断是否是非ie浏览器
+                var xmlDomVersions = ['MSXML.2.DOMDocument.6.0','MSXML.2.DOMDocument.3.0','Microsoft.XMLDOM'];
+                for(var i=0;i<xmlDomVersions.length;i++){
+                    try{
+                        xmlDoc = new ActiveXObject(xmlDomVersions[i]);
+                        xmlDoc.async = false;
+                        xmlDoc.loadXML(xmlString); //loadXML方法载入xml字符串
+                        break;
+                    }catch(e){
+                    }
+                }
+            }
+            //支持Mozilla浏览器
+            else if(window.DOMParser && document.implementation && document.implementation.createDocument){
+                try{
+                    /* DOMParser 对象解析 XML 文本并返回一个 XML Document 对象。
+                     * 要使用 DOMParser，使用不带参数的构造函数来实例化它，然后调用其 parseFromString() 方法
+                     * parseFromString(text, contentType) 参数text:要解析的 XML 标记 参数contentType文本的内容类型
+                     * 可能是 "text/xml" 、"application/xml" 或 "application/xhtml+xml" 中的一个。注意，不支持 "text/html"。
+                     */
+                    domParser = new  DOMParser();
+                    xmlDoc = domParser.parseFromString(xmlString, 'text/xml');
+                }catch(e){
+                }
+            }
+            else{
+                return null;
+            }
+
+            return xmlDoc;
+        }
+    }); 
 }(window);
