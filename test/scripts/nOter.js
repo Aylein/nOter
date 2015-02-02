@@ -614,6 +614,35 @@
                 }, bs);
             }(tag, eventName, callback);
             return elem;
+        },
+        loadXml: function(xmlString){
+            var xmlDoc=null;if(window.DOMParser && document.implementation && document.implementation.createDocument){
+                domParser = new  DOMParser();
+                xmlDoc = domParser.parseFromString(xmlString, 'text/xml');
+            }
+            else if(!window.DOMParser && window.ActiveXObject){
+                if(arguments.callee.ver != undefined) { 
+                    xmlDoc = new ActiveXObject(arguments.callee.ver);
+                    xmlDoc.async = false;
+                }
+                else{
+                    var xmlDomVersions = ['MSXML.2.DOMDocument.6.0','MSXML.2.DOMDocument.3.0','Microsoft.XMLDOM'];
+                    for(var i=0;i<xmlDomVersions.length;i++){
+                        xmlDoc = new ActiveXObject(xmlDomVersions[i]);
+                        arguments.callee.ver = xmlDomVersions[i];
+                        xmlDoc.async = false;
+                        xmlDoc.loadXML(xmlString); 
+                        break;
+                    }
+                }
+            }
+            else{
+                return null;
+            }
+            return xmlDoc;
+        },
+        parseJson: function(json){
+            return eval("(" + json + ")");
         }
     });
     //browser
@@ -730,6 +759,51 @@
         console.log(_list);
         return _list;
     };
+    var ajaxDefault = function(){
+        this.async = true;
+        this.type = "get";
+        this.url = " ";
+        this.data = {};
+        this.dataType = "text";
+        this.jsonp = false;
+        this.error = function(err){ throw new Error(err.msg); };
+        this.success = function(data){};
+    };
+    var XHR = function(){
+        if(typeof XMLHttpRequest != "undefined") return new XMLHttpRequest();
+        else if(typeof ActiveXObject != "undefined"){
+            if(arguments.callee.ver) return new ActiveXObject(arguments.callee.ver);
+            else{
+                var ver = ["MSXML2.XMLHttp.6.0", "MSXML2.XMLHttp.3.0", "MSXML2.XMLHttp"];
+                for(var i = 0, z = ver.lenght; i < z; i++){
+                    try{
+                        new ActiveXObject(ver[i]);
+                        arguments.callee.ver = ver[i];
+                        break;
+                    }
+                    catch(e){
+                        continue;
+                    }
+                }
+            }
+        }
+        else return null;
+    };
+    var makeUrl = function(url, data){
+        if(!data) return url;
+        url += url.indexOf("?") > 0 ? "&" : "?";
+        for(var key in data) 
+            url += encodeURIComponent(key) + "=" + encodeURIComponent(data[key]) + "&";
+        if(url.length > 0) url = url.substr(0, url.length - 1);
+        return url;
+    };
+    var formRealize = function(data){
+        var va = "";
+        for(var key in data) 
+            va += encodeURIComponent(key) + "=" + encodeURIComponent(data[key]) + "&";
+        if(va.length > 0) va = va.substr(0, va.length - 1);
+        return va;
+    };;
     oter.extend({
         navi: browser(),
         allDoc: function(deep){
@@ -744,40 +818,57 @@
             else _list = makeAllDoc(document);
             return _list;
         },
-        loadXml: function(xmlString){
-            var xmlDoc=null;
-            //判断浏览器的类型
-            //支持IE浏览器 
-            if(!window.DOMParser && window.ActiveXObject){   //window.DOMParser 判断是否是非ie浏览器
-                var xmlDomVersions = ['MSXML.2.DOMDocument.6.0','MSXML.2.DOMDocument.3.0','Microsoft.XMLDOM'];
-                for(var i=0;i<xmlDomVersions.length;i++){
-                    try{
-                        xmlDoc = new ActiveXObject(xmlDomVersions[i]);
-                        xmlDoc.async = false;
-                        xmlDoc.loadXML(xmlString); //loadXML方法载入xml字符串
-                        break;
-                    }catch(e){
+        jsonp: function(option){
+            if(option.jsonp == undefined || option.jsonp === false) return oter.ajax(option);
+            option = oter.extend(new ajaxDefault(), option);
+            var scr = oter.makeElement("script");
+            var url = makeUrl(option.url, option.data) + "&callback=" + encodeURIComponent(option.jsonp);
+            window[option.jsonp] = option.success;
+            oter.attr(scr, "src", url);
+            document.head.appendChild(scr);
+        },
+        ajax: function(option){
+            if(option.jsonp != undefined && option.jsonp !== false) return oter.jsonp(option);
+            option = oter.extend(new ajaxDefault(), option);
+            var xhr = XHR();
+            if(xhr == undefined){
+                throw new exception("no xhr build");
+                return;
+            }
+            xhr.onreadystatechange = function(){
+                if(xhr.readyState == 4){
+                    if(xhr.status >= 200 && xhr.status <= 300 || xhr.status == 304){
+                        switch(option.dataType){
+                            case "json":
+                            case "Json":
+                                option.success(oter.parseJson(xhr.responseText));
+                                break;
+                            case "xml":
+                            case "XML":
+                                option.success(oter.loadXml(xhr.responseText));
+                                break;
+                            default: 
+                                option.success(xhr.responseText);
+                                break;
+                        }
                     }
+                    else 
+                        option.error({ err: xhr.status, msg: "something wrong" });
                 }
+            };
+            if(xhr == null){
+                option.error({ code: -1, msg: "no XHR" });
+                return;
             }
-            //支持Mozilla浏览器
-            else if(window.DOMParser && document.implementation && document.implementation.createDocument){
-                try{
-                    /* DOMParser 对象解析 XML 文本并返回一个 XML Document 对象。
-                     * 要使用 DOMParser，使用不带参数的构造函数来实例化它，然后调用其 parseFromString() 方法
-                     * parseFromString(text, contentType) 参数text:要解析的 XML 标记 参数contentType文本的内容类型
-                     * 可能是 "text/xml" 、"application/xml" 或 "application/xhtml+xml" 中的一个。注意，不支持 "text/html"。
-                     */
-                    domParser = new  DOMParser();
-                    xmlDoc = domParser.parseFromString(xmlString, 'text/xml');
-                }catch(e){
-                }
+            if(option.type == "get"){
+                xhr.open(option.type, makeUrl(option.url, option.data), option.async);
+                xhr.send();
             }
-            else{
-                return null;
+            else {
+                xhr.open(option.type, option.url, option.async);
+                xhr.setRequestHeader("Content-Type", "Application/x-www-form-urlencoded");
+                xhr.send(formRealize(option.data));
             }
-
-            return xmlDoc;
         }
     }); 
 }(window);

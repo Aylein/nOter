@@ -18,5 +18,15 @@
 <script src="scripts/nOter.min.js"></script>
 <script>
     $.doler();
+    oter.jsonp({
+        type: "post",
+        url: "var/jsonp.php",
+        data: {c: 7, d: 9},
+        jsonp: "cc",
+        dataType: "json",
+        success: function(data){
+            console.log(data);
+        }
+    });
 </script>
 </html>
