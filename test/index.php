@@ -16,17 +16,19 @@
 </body>
 <script src="scripts/jquery-1.10.2.min.js"></script>
 <script src="scripts/nOter.min.js"></script>
+<script src="scripts/puke.js"></script>
 <script>
     $.doler();
+    /*
     oter.jsonp({
         type: "post",
-        url: "var/jsonp.php",
-        data: {c: 7, d: 9},
-        jsonp: "cc",
+        url: "http://localhost:16996/api/test",
+        data: {name: "123", age: 123},
         dataType: "json",
         success: function(data){
             console.log(data);
         }
     });
+    */
 </script>
 </html>

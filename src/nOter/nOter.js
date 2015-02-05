@@ -761,10 +761,10 @@
     };
     var ajaxDefault = function(){
         this.async = true;
-        this.type = "get";
+        this.type = "get"; //put delete post get
         this.url = " ";
         this.data = {};
-        this.dataType = "text";
+        this.dataType = "text"; //json xml text
         this.jsonp = false;
         this.error = function(err){ throw new Error(err.msg); };
         this.success = function(data){};
@@ -841,6 +841,7 @@
                         switch(option.dataType){
                             case "json":
                             case "Json":
+                            case "JSON":
                                 option.success(oter.parseJson(xhr.responseText));
                                 break;
                             case "xml":
@@ -856,10 +857,23 @@
                         option.error({ err: xhr.status, msg: "something wrong" });
                 }
             };
-            if(xhr == null){
-                option.error({ code: -1, msg: "no XHR" });
-                return;
+            option.type = option.type.toUpperCase();
+            switch(option.type){
+                case "PUT":
+                case "POST":
+                    xhr.open(option.type, option.url, option.async);
+                    xhr.setRequestHeader("Content-Type", "Application/x-www-form-urlencoded");
+                    xhr.send(formRealize(option.data));
+                    break;
+                case "DELETE":
+                case "GET":
+                default:
+                    option.type = option.type || "GET";
+                    xhr.open(option.type, makeUrl(option.url, option.data), option.async);
+                    xhr.send();
+                    break;
             }
+            /*
             if(option.type == "get"){
                 xhr.open(option.type, makeUrl(option.url, option.data), option.async);
                 xhr.send();
@@ -869,6 +883,7 @@
                 xhr.setRequestHeader("Content-Type", "Application/x-www-form-urlencoded");
                 xhr.send(formRealize(option.data));
             }
+            */
         }
     }); 
 }(window);
