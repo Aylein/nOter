@@ -94,8 +94,12 @@
             else if((oter.typeof(src, 1) == "Object" || oter.typeof(src, 1) == "Function") && 
                 oter.typeof(target, 1) == "Object"){
                 for(var name in target){
-                    if(src[name] != undefined && oter.typeof(src[name], 1) == "Object") 
+                    if(src[name] != undefined && oter.typeof(src[name], 1) == "Object" && 
+                        oter.typeof(target[name], 1) == "Object") 
                         src[name] = oter.extend(src[name], target[name]);
+                    else if(src[name] != undefined && oter.isArrayLike(src[name]) && 
+                        oter.isArrayLike(target[name])) 
+                        src[name] = oter.merge(src[name], target[name]);
                     else src[name] = target[name];
                 }
             }
@@ -178,6 +182,7 @@
         first: function(){ return this.get(0); },
         last: function(){ return this.length > 0 ? this.get(this.length - 1) : undefined; },
         clear: function(){ return oter.each(this, function(){ oter.clear(this); }), this; },
+        empty: function(){ return this.clear(); },
         addClass: function(className){
             var type = oter.typeof(className, 1);
             if(oter.types._array.test(type))
@@ -762,6 +767,7 @@
     var ajaxDefault = function(){
         this.async = true;
         this.type = "get"; //put delete post get
+        this.contentType = "application/json";
         this.url = " ";
         this.data = {};
         this.dataType = "text"; //json xml text
@@ -792,16 +798,26 @@
     var makeUrl = function(url, data){
         if(!data) return url;
         url += url.indexOf("?") > 0 ? "&" : "?";
-        for(var key in data) 
-            url += encodeURIComponent(key) + "=" + encodeURIComponent(data[key]) + "&";
-        if(url.length > 0) url = url.substr(0, url.length - 1);
+        var type = oter.typeof(data, 1);
+        if(oter.types._object.test(type)){
+            for(var key in data) 
+                url += encodeURIComponent(key) + "=" + encodeURIComponent(data[key]) + "&";
+            if(url.length > 0) url = url.substr(0, url.length - 1);
+        }
+        else if(oter.types._string.test(type))
+            url += data;
         return url;
     };
     var formRealize = function(data){
         var va = "";
-        for(var key in data) 
-            va += encodeURIComponent(key) + "=" + encodeURIComponent(data[key]) + "&";
-        if(va.length > 0) va = va.substr(0, va.length - 1);
+        var type = oter.typeof(data, 1);
+        if(oter.types._object.test(type)){
+            for(var key in data) 
+                va += encodeURIComponent(key) + "=" + encodeURIComponent(data[key]) + "&";
+            if(va.length > 0) va = va.substr(0, va.length - 1);
+        }
+        else if(oter.types._string.test(type))
+            va = data;
         return va;
     };;
     oter.extend({
@@ -829,7 +845,9 @@
         },
         ajax: function(option){
             if(option.jsonp != undefined && option.jsonp !== false) return oter.jsonp(option);
+            console.log(option);
             option = oter.extend(new ajaxDefault(), option);
+            console.log(option);
             var xhr = XHR();
             if(xhr == undefined){
                 throw new exception("no xhr build");
@@ -862,7 +880,13 @@
                 case "PUT":
                 case "POST":
                     xhr.open(option.type, option.url, option.async);
-                    xhr.setRequestHeader("Content-Type", "Application/x-www-form-urlencoded");
+                    xhr.setRequestHeader("Accept", option.contentType);
+                    xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+                    var type = oter.typeof(option.data, 1);
+                    if(oter.types._string.test(type))
+                        xhr.setRequestHeader("Content-Type", "application/json");
+                    else 
+                        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
                     xhr.send(formRealize(option.data));
                     break;
                 case "DELETE":
@@ -870,6 +894,8 @@
                 default:
                     option.type = option.type || "GET";
                     xhr.open(option.type, makeUrl(option.url, option.data), option.async);
+                    xhr.setRequestHeader("Accept", option.contentType);
+                    xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
                     xhr.send();
                     break;
             }
