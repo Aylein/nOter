@@ -5,11 +5,15 @@ module.exports = function(grunt) {
         concat:{
             dist:{
                 src: ["src/nOter/nOter.js"],
-                dest: "test/scripts/nOter.js"
+                dest: "release/nOter/nOter.js"
             },
-            js:{
-                src: ["src/nOter/nOter.js"],
-                dest: "nOter/nOter.js"
+            puke: {
+                src: ["src/Puke/puke.js"],
+                dest: "release/Puke/puke.js"
+            },
+            imager: {
+                src: ["src/imager/imager.js"],
+                dest: "release/imager/imager.js"
             }
         },
         uglify:{
@@ -17,19 +21,31 @@ module.exports = function(grunt) {
                 banner: "/*! <%= pkg.name %> <%= grunt.template.today('dd-mm-yyyy') %> */\n"
             },
             dist:{
-                files:{"test/scripts/nOter.min.js": ["test/scripts/nOter.js"]}
+                files:{
+                    "test/scripts/nOter.min.js": ["release/nOter/nOter.js"],
+                    "release/nOter/nOter.min.js": ["release/nOter/nOter.js"]
+                }
             },
-            js:{
-                files:{"nOter/nOter.min.js": ["nOter/nOter.js"]}
+            puke: {
+                files:{
+                    "test/scripts/puke.min.js": ["release/Puke/puke.js"],
+                    "release/Puke/puke.min.js": ["release/Puke/puke.js"]
+                }
+            },
+            imager: {
+                files:{
+                    "test/scripts/imager.min.js": ["release/imager/imager.js"],
+                    "release/imager/imager.min.js": ["release/imager/imager.js"]
+                }
             }
         },
         watch:{
             nOter: {
-                files: ["src/nOter/*.js"],
+                files: ["src/nOter/*.js", "src/Puke/*.js", "src/imager/*.js"],
                 tasks: ["concat:*", "uglify:*"]
             }
         }
-    });  
+    });
 
     grunt.loadNpmTasks("grunt-contrib-concat");
     grunt.loadNpmTasks("grunt-contrib-uglify");
