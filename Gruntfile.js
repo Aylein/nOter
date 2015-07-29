@@ -14,11 +14,15 @@ module.exports = function(grunt) {
             imager: {
                 src: ["src/imager/imager.js"],
                 dest: "release/imager/imager.js"
+            },
+            ef: {
+                src: ["src/EF/ef.js"],
+                dest: "release/EF/ef.js"
             }
         },
         uglify:{
             options:{
-                banner: "/*! <%= pkg.name %> <%= grunt.template.today('dd-mm-yyyy') %> */\n"
+                banner: "/*! <%= pkg.name %> <%= grunt.template.today('dd-mm-yyyy') %> @AyleinOter */\n"
             },
             dist:{
                 files:{
@@ -37,11 +41,17 @@ module.exports = function(grunt) {
                     "test/scripts/imager.min.js": ["release/imager/imager.js"],
                     "release/imager/imager.min.js": ["release/imager/imager.js"]
                 }
+            },
+            ef: {
+                files:{
+                    "test/scripts/ef.min.js": ["release/EF/ef.js"],
+                    "release/EF/ef.min.js": ["release/EF/ef.js"]
+                }
             }
         },
         watch:{
             nOter: {
-                files: ["src/nOter/*.js", "src/Puke/*.js", "src/imager/*.js"],
+                files: ["src/nOter/*.js", "src/Puke/*.js", "src/imager/*.js", "src/EF/*.js"],
                 tasks: ["concat:*", "uglify:*"]
             }
         }
@@ -50,8 +60,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks("grunt-contrib-concat");
     grunt.loadNpmTasks("grunt-contrib-uglify");
     grunt.loadNpmTasks("grunt-contrib-watch");
-    //grunt.registerTask("default", ["concat:*", "uglify:*"]);
-    grunt.registerTask("default", ["watch"]);
+    grunt.registerTask("default", ["concat:*", "uglify:*"]);
     /*
     grunt.loadTasks("build_tasks");
     grunt.registerTask("default", ["concat:*", "uglify:*"]);
