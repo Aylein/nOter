@@ -4,19 +4,39 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>index</title>
     <style>
-        #box { width: 400px; height: 250px; margin: 0 auto; border: 1px solid #ccc; overflow: hidden; }
-        #box img { width: 400px; height: 250px; }
+		* {margin: 0; padding: 0; text-decoration: none;}
+		html, body {width: 100%; height: 100%;}
+		.domain {margin: 0 auto;}
     </style>
 </head>
 <body>
-    <div id="box">
-        <img src="images/1.jpg" alt="">
-        <img src="images/2.jpg" alt="">
-        <img src="images/3.jpg" alt="">
-    </div>
+	<div class="domain" id="domain">
+		<img src="images/1.jpg" title="11" url="img/1.jpg">
+		<img src="images/2.jpg" title="22">
+		<img src="images/3.jpg" title="33">
+		<img src="images/4.jpg" title="44">
+		<img src="images/5.jpg" title="55">
+		<img src="images/6.jpg" title="66">
+		<img src="images/7.jpg" title="77">
+	</div>
 </body>
 <script src="scripts/nOter.min.js"></script>
+<script src="scripts/ef.min.js"></script>
 <script>
-    //oter.doller();
+	var ffe = EF({
+		id: "domain", 
+		width: 400, 
+		height: 270, 
+		images: [
+			{src: "images/8.jpg", title: "88"},
+			{src: "images/9.jpg", title: "99"},
+			{src: "images/10.jpg", title: "1010"},
+			{src: "images/11.jpg", title: "1111"}
+		],
+		asborn: 10,
+		speed: 6000,
+		shiftspeed: 800,
+		position: "left-top"
+	});
 </script>
 </html>
