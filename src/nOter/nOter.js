@@ -21,6 +21,18 @@
         if(!deep && document.querySelectorAll) return document.querySelectorAll(select);
 		return [];
     };
+    //tags
+    var tags = ("a abbr acronym address applet area article aside audio b base basefont bdi bdo " +
+        "big blockquote body br button canvas caption center cite code col colgroup command datalist " +
+        "dd del details dfn dialog dir div dl dt em embed fieldset figcaption figure font fomain form frame " +
+        "frameset h1 h2 h3 h4 h5 h6 head header hr html i iframe img input ins kbd keygen label legend li link main map mark " +
+        "menu menuitem meta meter nav noframes noscript object ol optgroup option output p param pre progress q rp " +
+        "rt ruby s samp script section select small source span strike strong style sub summary sup table tbody td " +
+        "textarea tfoot th thead time title tr track tt u ul var video wbr").split(" ");
+    var attrs = ("class id name style type rows cols width height require checked selected readonly contenteditable " + 
+        "placehoder").split(" ");
+    var eventType = ("click dblclick mousedown mouseup mouseover mouseout mousemove ouseenter mouseleave keypress keydown keyup" +
+        "blur focus change reset submit touchstart touchmove touchend touchcancel").split(" ");
     
     //oter
     var oter = window.oter = window.Oter = window.$ = function(select) {
@@ -69,11 +81,12 @@
             _object: /^[o|O]bject$/, //["object", "Object"],
             _array: /^Array$/, //["Array"],
             _window: /^Window$/,
-            _document: /^NodeList|HTMLCollection|HTMLAllCollection|HTMLDocument$/, //["HTMLCollection", "HTMLAllCollection", "HTMLDocument"],
+            _node: /^NodeList|HTMLCollection|HTMLAllCollection$/, //["HTMLCollection", "HTMLAllCollection"],
+            _document: /^HTMLDocument$/, //["HTMLDocument"],
             _element: /^HTML\S+Element$/, //["HTMLImageElement", "HTMLDivElement"],
             _domtoken: /^DOMTokenList$/,
             _function: /^[f|F]unction$/, //["function", "Function"],
-            _number: /^[n|N]unction$/, //["number", "Number"],
+            _number: /^[n|N]umber$/, //["number", "Number"],
             _string: /^[s|S]tring$/, //["string", "String"],
             _boolen: /^[b|B]oolean$/, //["boolean", "Boolean"]
         }
@@ -97,6 +110,12 @@
         }
         return z;
     },
+    oter._value = function(obj){
+        var type = oter.typeof(obj);
+        if(oter.regex.types._string.test(type) || oter.regex.types._number.test(type))
+            return obj.valueOf();
+        return obj;
+    };
     oter.charLength = function(val){
         var l = 0;
         for (var i = 0; i < val.length; i++) {
@@ -130,7 +149,7 @@
     oter.isArrayLike = function(array){
         var type = oter.typeof(array);
         if(type == "undefined") return false;
-        if(type == "Array" || oter.regex.types._document.test(type)) return true;
+        if(type == "Array" || oter.regex.types._node.test(type)) return true;
         return type == "Object" && array.splice != undefined && array.length >= 0;
     };
     oter.typeof = function(obj, deep){
@@ -203,13 +222,15 @@
         }
         return src;
     };
-    oter.map = function(){
+    oter.map = function(){ //arguments bool src function args
         var list = [];
         var len = arguments.length;
         if(len == 0) return list;
         var i = 0, f = arguments[i++];
-        if(oter.regex.types._boolen.test(oter.typeof(f))) i--;
-        else f = false;
+        if(!oter.regex.types._boolen.test(oter.typeof(f))){
+            i--;
+            f = false;
+        }
         var src = arguments[i++], callback = arguments[i++], args = arguments[i++];
         if(!oter.regex.types._function.test(oter.typeof(callback))) return list;
         var type = oter.typeof(src);
@@ -217,7 +238,9 @@
             for(var i = 0, z = src.length; i < z; i++){
                 var _this = src[i], _args = oter.merge(true, [], args);
                 _args.push(i, _this);
-                if(callback.apply(_this, _args)) list.push(f ? oter.copy(_this) : _this);
+                var res = callback.apply(_this, _args);
+                if(res) list.push(oter._value(f ? oter.copy(res) : res));
+                //if(callback.apply(_this, _args)) list.push(f ? oter.copy(_this) : _this);
             }
         }
         else if(oter.regex.types._object.test(type)){
@@ -226,13 +249,17 @@
             for(var key in src){
                 var _this = src[key], _args = oter.merge(true, [], args);
                 _args.push(i, key, _this);
-                if(callback.apply(_this, _args)) list[key] = f ? oter.copy(_this) : _this;
+                var res = callback.apply(_this, _args);
+                if(res) list.push(oter._value(f ? oter.copy(res) : res));
+                //if(callback.apply(_this, _args)) list[key] = f ? oter.copy(_this) : _this;
                 i++;
             }
         }
         else {
             var _args = oter.merge(true, [], args);
-            if(callback.apply(src, _args)) list = src;
+            var res = callback.apply(_this, _args);
+            if(res) list = src;
+            //if(callback.apply(src, _args)) list = src;
         }
         return list;
     };
@@ -293,14 +320,15 @@
         }
         else if(oter.isArrayLike(select)){
             select = oter.map(select, function(){ 
-                return oter.regex.types._element.test(oter.typeof(this, 1)); 
+                var type = oter.typeof(this);
+                return oter.regex.types._element.test(type) || oter.regex.types._document.test(type) ? this : false; 
             });
             return oter.merge(this, select);
         }
         else if(oter.regex.types._object.test(type) && oter.constructor == select.constructor){
             return oter.merge(this, select);
         }
-        else if(oter.regex.types._element.test(type)){
+        else if(oter.regex.types._element.test(type) || oter.regex.types._document.test(type)){
             var _list = [];
             return _list.push(select), oter.merge(this, _list);
         }
@@ -311,14 +339,13 @@
                     attr: RegExp.$2,
                     text: RegExp.$3
                 }, list = [];
-                list.push(oter.makeElement(no.tag, {text: no.text}));
+                list.push(oter.Element(no.tag, {text: no.text}));
                 var ar = no.attr.match(oter.regex.selector._attrs);
                 if(ar != undefined && ar.length > 0){
                     for(var i = 0, z = ar.length; i < z; i++)
                     {
-                        if(ar[i].indexOf("=") > -1){
+                        if(ar[i].indexOf("=") > -1)
                             oter.attr(list[0], ar[i].split("=")[0], ar[i].split("=")[1].replace(/"/g, ""));
-                        }
                         else
                             oter.attr(list[0], ar[i], true);
                     }
@@ -332,6 +359,175 @@
         }
     };
     init.prototype = oter.fn;
+    //dom action
+    oter.extend({
+        clear: function(elem){
+            while(elem.lastChild) elem.removeChild(elem.lastChild);
+        },
+        append: function(elem, _elem, deep){
+            deep = deep || false;
+            elem.appendChild(deep ? _elem.cloneNode(1) : _elem);
+        },
+        on: function(event, elem, callback, bs){
+            if(arguments.length < 3) return elem;
+            var type = oter.typeof(elem);
+            if((!oter.regex.types._element.test(type) && !oter.regex.types._document.test(type)) || 
+                eventType.indexOf(event) < 0 || !oter.regex.types._function.test(oter.typeof(callback))) return;
+            bs = bs || false;
+            if(elem.addEventListener)
+                elem.addEventListener(event, callback, bs);
+            else if(elem.attachEvent)
+                elem.attachEvent("on" + event, callback);
+            else elem["on" + event] = callback;
+        },
+        html: function(elem, html){
+            var type = oter.typeof(elem), _this = this;
+            if(!oter.regex.types._element.test(type)) return;
+            if(html != undefined){
+                this.clear(elem);
+                type = oter.typeof(html);
+                if(oter.regex.types._element.test(type))
+                    if(elem.innerHTML != undefined) elem.innerHTML = html.toString();
+                else if(oter.isArrayLike(html)){
+                    oter.each(html, function(){
+                        if(oter.regex.types._element.test(oter.typeof(this)))
+                            _this.append(elem, this);
+                    });
+                }
+                else if(oter.regex.types._string.test(type))
+                    elem.innerHTML = html;
+            }
+            else return elem.innerHTML != undefined ? elem.innerHTML.toString() : "";
+        },
+        text: function(elem, text){
+            elem = elem || {};
+            var bo = text == undefined;
+            var fun = elem.innerText != undefined ? "innerText" : undefined;
+            fun = fun == undefined && elem.textContent ? "textContent" : fun;
+            return fun != undefined ? (bo ? elem[fun] : elem[fun] = text.toString()) : undefined;
+        },
+        attr: function(elem, key, value){
+            elem = elem || {};
+            if(key == undefined || !elem.getAttribute) return;
+            if(value == undefined)
+                return elem.getAttribute(key.toString());
+            else oter.regex.types._boolen.test(oter.typeof(value)) ?
+                (value ? elem.setAttribute(key.toString(), key.toString()) : elem.removeAttribute(key)) :
+                elem.setAttribute(key.toString(), value.toString());
+        },
+        class: function(elem, clsName){
+            if(!clsName) return;
+            if(elem.classList){
+                elem.classList.toggle(clsName);
+                return;
+            }
+            if(elem.className.indexOf(clsName) < 0) elem.className += " " + clsName;
+            else elem.className = elem.className.replace(clsName, "");
+        },
+        addClass: function(elem, clsName){
+            if(!clsName) return;
+            if(elem.classList && !elem.classList.contains(clsName)){
+                elem.classList.add(clsName);
+                return;
+            }
+            if(elem.className.indexOf(clsName) < 0) elem.className += " " + clsName;
+        },
+        removeClass: function(elem, clsName){
+            if(!clsName) return;
+            if(elem.classList && elem.classList.contains(clsName)){
+                elem.classList.remove(clsName);
+                return;
+            }
+            if(elem.className.indexOf(clsName) > 0) 
+                elem.className = elem.className.replace(clsName, "");
+        },
+        classExsits: function(elem, clsName){
+            if(!clsName) return false;
+            return elem.className.indexOf(clsName) > -1;
+        },
+        style: function(elem, key, value){
+            if(value) elem.style[key] = value;
+            else return elem.style[key];
+        },
+        styleText: function(elem, value){
+            elem.style.cssText = value.toString();
+        },
+        Element: function(tag, opt){
+            tag = tag || undefined, opt = opt || undefined;
+            var element;
+            if(tags.indexOf(tag) > -1) element = document.createElement(tag);
+            else if(oter.regex.selector._tag.test(tag)){
+                var no = {
+                    tag: RegExp.$1,
+                    attr: RegExp.$2,
+                    text: RegExp.$3
+                };
+                element = oter.Element(no.tag, {text: no.text});
+                var ar = no.attr.match(oter.regex.selector._attrs);
+                if(ar != undefined && ar.length > 0){
+                    for(var i = 0, z = ar.length; i < z; i++)
+                    {
+                        if(ar[i].indexOf("=") > -1)
+                            oter.attr(element, ar[i].split("=")[0], ar[i].split("=")[1].replace(/"/g, ""));
+                        else oter.attr(element, ar[i], true);
+                    }
+                }
+            }
+            if(element != undefined && oter.regex.types._object.test(oter.typeof(opt))){
+                for(var name in opt) {
+                    if(opt[name] != undefined) {
+                        if(name == "text") oter.text(element, opt.text);
+                        else oter.attr(element, name, opt[name]);
+                    }
+                }
+            }
+            return element;
+        }
+    });
+    oter.fn.extend({
+        each: function(callback, args){
+            oter.each(this, callback, args);
+            return this;
+        },
+        clear: function(){ 
+            this.each(function(){ 
+                oter.clear(this); 
+            }); 
+            return this;
+        },
+        append: function(elem){
+            this.each(function(){ 
+                oter.append(this, elem); 
+            }); 
+            return this;
+        },
+        on: function(_event, selector, callback, bs){
+            var type = oter.typeof(selector), bo = false;
+            bs = bs || false;
+            if(!oter.regex.types._function.test(type)){
+                bo = true;
+                selector = oter(selector);
+            }
+            else{
+                bs = callback ? callback : bs;
+                callback = selector;
+                selector = this;
+            }
+            if(bo)
+                this.each(function(){
+                    oter.on(_event, this, function(event){
+                        event = event || window.event;
+                        var target = event.target || event.srcElement;
+                        if(selector.indexOf(target) > -1) callback.call(target);
+                    }, bs);
+                });
+            else
+                this.each(function(){
+                    oter.on(_event, this, callback, bs);
+                });
+            return this;
+        }
+    });
     //出让 $ Oter oter 对象
     oter.doller = function(){
         if (_$) window.$ = _$;
