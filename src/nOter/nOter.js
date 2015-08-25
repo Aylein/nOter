@@ -96,9 +96,15 @@
         if(src == undefined || target == undefined || rep == undefined) return src;
         return src.toString().replace(new RegExp(target, "g"), rep.toString());
     };
-    oter.charcut = function(val, len) {
+    oter._value = function(obj){
+        var type = oter.typeof(obj);
+        if(oter.regex.types._string.test(type) || oter.regex.types._number.test(type) || oter.regex.types._boolen.test(type))
+            return obj.valueOf();
+        return obj;
+    };
+    oter.charcut = function(val, len){
         var l = 0, z = "";
-        for (var i = 0; i < val.length; i++) {
+        for (var i = 0; i < val.length; i++){
             z += val[i];
             var length = val.charCodeAt(i);
             if (length >= 0 && length <= 128) l += 0.5;
@@ -109,12 +115,6 @@
             }
         }
         return z;
-    },
-    oter._value = function(obj){
-        var type = oter.typeof(obj);
-        if(oter.regex.types._string.test(type) || oter.regex.types._number.test(type))
-            return obj.valueOf();
-        return obj;
     };
     oter.charLength = function(val){
         var l = 0;
@@ -150,7 +150,7 @@
         var type = oter.typeof(array);
         if(type == "undefined") return false;
         if(type == "Array" || oter.regex.types._node.test(type)) return true;
-        return type == "Object" && array.splice != undefined && array.length >= 0;
+        return type == "Object" && array.splice != undefined && array.length > -1;
     };
     oter.typeof = function(obj, deep){
         deep = deep || false;

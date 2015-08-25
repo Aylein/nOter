@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>index</title>
+    <style>
+		* {margin: 0; padding: 0; text-decoration: none;}
+		html, body {width: 100%; height: 100%;}
+		.main {margin: 0 auto;}
+		.main div {width: 100%;}
+		.main .header, .main .footer {height: 5%;}
+		.main .section .party {float: left;}
+		.main .section .sign {float: left;}
+		.main .section .party .part {float: left; background-color: #000000;}
+		.clear {clear: both;}
+    </style>
+</head>
+<body>
+	<div class="main" id="main">
+		<div class="header"></div>
+		<div class="section">
+			<div class="party" id="party">
+			</div><div class="sign" id="sign">
+			</div>
+			<div class="clear"></div>
+		</div>
+		<div class="footer"></div>
+	</div>
+</body>
+<script src="scripts/jquery-1.10.2.min.js"></script>
+<script>
+	var black = "#000000";
+	var main = {
+		main: document.getElementById("main"),
+		party: document.getElementById("party"),
+		sign: document.getElementById("sign"),
+		height: 0,
+		parts: {L: 40, R: 20, 
+			get: function(l, r){ return main.parts["part_" + l + "_" + r]; },
+			first: function(){ return main.parts.get(0, 0); },
+			last: function(){ return main.parts.get(main.parts.L - 1, main.parts.R - 1); },
+			lfirst: function(l){ return main.parts.get(l, 0); },
+			llast: function(l){ return main.parts.get(l, main.parts.R - 1); },
+			distanceL: function(o, _o){ return _o.l - o.l; },
+			distanceR: function(o, _o){ return _o.r - o.r; }
+		},
+		type: ["lL", "rL", "T", "I", "O", "lZ", "rZ"],
+		color: ["#A10000", "#9A0083", "#0014F6", "#0097EA", "#00BF49", "#366600", "#CFCD00", "#9E4300"],
+		position: ["up", "right", "bottom", "left"],
+		speed: 1000,
+		holdSpeed: 100,
+		game: {statu: 0, paintST: {}, actionST: {}}
+	};
+	var Part = function(dom, l, r){
+		this.st = 0;
+		this.l = l;
+		this.r = r;
+		this.part = dom;
+		this.color = "#000000";
+	};
+	var partFn = {
+		isFirst: function(){
+			return this.l == 0 && this.r == 0;
+		},
+		isLast: function(){
+			return this.l == main.parts.L - 1 && this.r == main.parts.R - 1;
+		},
+		isLFirst: function(){
+			return this.r == 0;
+		},
+		isLLast: function(){
+			return this.r == main.parts.R - 1;
+		},
+		isRFirst: function(){
+			return this.l == 0;
+		},
+		isRLast: function(){
+			return this.l == main.parts.L - 1;
+		},
+		pref: function(n){
+			n = n || 1;
+			var r = this.r, l = this.l;
+			if(r < n){
+				n = n - r;
+				if(l > Math.floor(n / main.parts.R) + 1){
+					r = main.parts.R - (n > main.parts.R ? n % main.parts.R : n);
+					l -= Math.floor(n / main.parts.R) + 1;
+				}
+				else{l = 0; r = 0;} 
+			}
+			else r -= n;
+			return main.parts.get(l, r);
+		},
+		next: function(n){
+			n = n || 1;
+			var r = this.r, l = this.l;
+			if(r > main.parts.R - n){
+				n = n + r - main.parts.R - 1;
+				if(l < main.parts.L - Math.floor(n / main.parts.R) - 1){
+					r = (n > main.parts.R ? n % main.parts.R : n);
+					l += Math.floor(n/ main.parts.R) + 1;
+				}
+				else{l = main.parts.L - 1; r = main.parts.R - 1;} 
+			}
+			else r += n - 1;
+			console.log(l, r);
+			return main.parts.get(l, r);
+		},
+		nextL: function(){
+			var l = this.l + 1 >= main.parts.L ? this.l : this.l + 1;
+			return main.parts.get(l, this.r);
+		},
+		prefL: function(){
+			var l = this.l <= 0 ? 0 : this.l - 1;
+			return main.parts.get(l, this.r);
+		},
+		nextR: function(){
+			var r = this.r + 1 >= main.parts.R ? this.r : this.r + 1;
+			return main.parts.get(this.l, r);
+		},
+		prefR: function(){
+			var r = this.r <= 0 ? 0 : this.r - 1;
+			return main.parts.get(this.l, r);
+		}
+	};
+	Part.prototype = partFn;
+	var Event = {
+		event: function(node, name, event){
+			if(node.addEventListener)
+				node.addEventListener(name, event, false);
+			else if(node.attachEvent)
+				node.attachEvent("on" + name, event);
+			else
+				node["on" + name] = event;
+		},
+		style: function(node, key, value){
+			if(key in node.style)
+				node.style[key] = value;
+		},
+		up: function(){
+			main.founder.makeTransform();
+			//main.parts.cur = main.parts.cur.prefL();
+		},
+		left: function(){
+			if(!main.parts.cur.isLFirst()){
+				var next = main.parts.cur.prefR();
+				if(next.st != 2){
+					main.parts.cur.st = 0;
+					main.parts.cur = main.parts.cur.prefR();
+					main.parts.cur.st = 1;
+				}
+			}
+		},
+		right: function(){
+			if(!main.parts.cur.isLLast()){
+				var next = main.parts.cur.nextR();
+				if(next.st != 2){
+					main.parts.cur.st = 0;
+					main.parts.cur = main.parts.cur.nextR();
+					main.parts.cur.st = 1;
+				}
+			}
+		},
+		down: function(){
+			if(!main.parts.cur.isRLast()){
+				var next = main.parts.cur.nextL();
+				if(next.st != 2){
+					main.parts.cur.st = 0;
+					main.parts.cur = main.parts.cur.nextL();
+					main.parts.cur.st = 1;
+				}
+			}
+			//main.parts.cur = main.parts.cur.nextL();
+		},
+		transform: function(){},
+		confirm: function(){
+			main.parts.cur = main.parts.cur.pref();
+		},
+		cancel: function(){
+			main.parts.cur = main.parts.cur.next();
+		}
+	};
+	var resize = function(){
+		var bodyHeight = Math.ceil(document.body.clientHeight);
+		main.height = Math.ceil(bodyHeight * 0.9 * 0.9 / main.parts.L);
+		var signHeight = main.height * main.parts.L;
+		var signWidth = main.height * main.parts.R;
+		main.main.style.cssText = "height: " + signHeight + "px; width: " 
+			+ signWidth * 2 + "px;";
+		main.party.style.cssText = main.sign.style.cssText = "width: " 
+			+ signWidth +  "px; height: " + signHeight + "px;";
+	};
+	var makeParts = function(){
+		for(var i = 0; i < main.parts.L; i++){
+			for(var n = 0; n < main.parts.R	; n++){
+				var part = document.createElement("div");
+				part.classList.add("part");
+				main.parts["part_" + i + "_" + n] = new Part(part, i, n);
+				main.party.appendChild(part);
+			}
+		}
+		var clear = document.createElement("div");
+		clear.classList.add("clear");
+		main.party.appendChild(clear);
+		styleParts();
+	};
+	var styleParts = function(){
+		for(var o in main.parts)
+			if(main.parts[o].part)
+				main.parts[o].part.style.cssText = "height: " + main.height + "px; width: " 
+					+ main.height + "px;";
+	}
+	var paint = function(){
+		for(var o in main.parts)
+			if(main.parts[o].part)
+				Event.style(main.parts[o].part, "backgroundColor", main.parts[o].color);
+	};
+	var beginPaint = function(){
+		paint();
+		main.game.paintST.paint = setTimeout(beginPaint, 16.7);
+	};
+	var Action = {
+		random: function(n){
+			return Math.ceil(Math.random() * n);
+		},
+		makeFounder: function(){
+
+		},
+		win: function(){},
+		lose: function(){},
+		pasue: function(){}
+	};
+	var Founder = function(){
+		this.init = function(){
+			this.type = main.type[Action.random(7) - 1];
+			this.color = main.color[Action.random(8) - 1];
+			this.position = main.position[Action.random(4) - 1];
+		};
+		this.init();
+		this.parts = [];
+		this.makeFounder(main.parts.get(0, Math.ceil((main.parts.R - (this.type == "I" && (this.position == "left" || this.position == "right") ? 4 : 2)) / 2)));
+	};
+	var founderFn = Founder.prototype = {
+		makeFounder: function(spart){
+			this.spart = spart;
+			this.epart = this.epart ? this.epart : this.spart.nextR().nextR();
+			switch(this.type){
+				case "lL": 
+					switch(this.position){
+						case "up": 
+							this.epart = this.spart.nextR();
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextL().nextR());
+							this.parts.push(this.spart.nextL().nextL());
+							this.parts.push(this.spart.nextL().nextL().nextR());
+							break;
+						case "right":
+							if(this.epart.isLLast())
+								this.spart = this.spart.prefR();
+							else this.epart = this.epart.nextR();
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextR());
+							this.parts.push(this.spart.nextL().nextR().nextR());
+							break;						
+						case "bottom": 
+							this.epart = this.spart.nextR();
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextL());
+							break;	
+						case "left": 
+							if(this.epart.isLLast())
+								this.spart = this.spart.prefR();
+							else this.epart = this.epart.nextR();
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextR().nextR());
+							this.parts.push(this.spart.nextR().nextR().nextL());
+							break;	
+					}
+					break; 
+				case "rL": 
+					switch(this.position){
+						case "up": 
+							this.epart = this.spart.nextR();
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextL());
+							this.parts.push(this.spart.nextL().nextL().nextR());
+							break;
+						case "right":
+							if(this.epart.isLLast())
+								this.spart = this.spart.prefR();
+							else this.epart = this.epart.nextR();
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextR().nextR());
+							this.parts.push(this.spart.nextL());
+							break;						
+						case "bottom": 
+							this.epart = this.spart.nextR();
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextL().nextR());
+							this.parts.push(this.spart.nextL().nextL().nextR());
+							break;	
+						case "left": 
+							if(this.epart.isLLast())
+								this.spart = this.spart.prefR();
+							else this.epart = this.epart.nextR();
+							this.parts.push(this.spart.nextR().nextR());
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextR());
+							this.parts.push(this.spart.nextL().nextR().nextR());
+							break;	
+					}
+					break; 
+				case "T": 
+					switch(this.position){
+						case "up": 
+							if(this.epart.isLLast())
+								this.spart = this.spart.prefR();
+							else this.epart = this.epart.nextR();
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextR());
+							this.parts.push(this.spart.nextL().nextR().nextR());
+							break;
+						case "right":
+							this.epart = this.spart.nextR();
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextL());
+							this.parts.push(this.spart.nextL().nextR());
+							break;						
+						case "bottom": 
+							if(this.epart.isLLast())
+								this.spart = this.spart.prefR();
+							else this.epart = this.epart.nextR();
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextR().nextR());
+							this.parts.push(this.spart.nextR().nextL());
+							break;	
+						case "left": 
+							this.epart = this.spart.nextR();
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextR());
+							this.parts.push(this.spart.nextL().nextL().nextR());
+							break;	
+					}
+					break; 
+				case "I": 
+					switch(this.position){
+						case "up": 						
+						case "bottom": 
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextL());
+							this.parts.push(this.spart.nextL().nextL().nextL());
+							break;
+						case "right":	
+						case "left": 
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextR().nextR());
+							this.parts.push(this.spart.nextR().nextR().nextR());
+							break;
+					}
+					break; 
+				case "O": 
+					switch(this.position){
+						case "up": 						
+						case "bottom":
+						case "right":	
+						case "left": 
+							this.epart = this.spart.nextR();
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextR());
+							break;
+					}
+					break; 
+				case "lZ":
+					switch(this.position){		
+						case "up": 
+						case "bottom": 
+							if(this.epart.isLLast())
+								this.spart = this.spart.prefR();
+							else this.epart = this.epart.nextR();
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextL().nextR());
+							this.parts.push(this.spart.nextL().nextR().nextR());
+							break;
+						case "left": 
+						case "right":
+							this.epart = this.spart.nextR();
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextR());
+							this.parts.push(this.spart.nextL().nextL());
+					}
+					break; 
+				case "rZ": 
+					switch(this.position){		
+						case "up": 
+						case "bottom": 
+							if(this.epart.isLLast())
+								this.spart = this.spart.prefR();
+							else this.epart = this.epart.nextR();
+							this.parts.push(this.spart.nextR());
+							this.parts.push(this.spart.nextR().nextR());
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextR());
+							break;
+						case "left": 
+						case "right":
+							this.epart = this.spart.nextR();
+							this.parts.push(this.spart);
+							this.parts.push(this.spart.nextL());
+							this.parts.push(this.spart.nextL().nextR());
+							this.parts.push(this.spart.nextL().nextL().nextR());
+					}
+					break; 
+			}
+			for(var i in this.parts)
+				this.parts[i].color = this.color;
+		},
+		makeTransform: function(){
+			for(var i in this.parts)
+				this.parts[i].color = black;
+			this.parts = [];
+			switch(this.position){
+				case "up": this.position = "right"; break;
+				case "right": this.position = "bottom"; break;
+				case "bottom": this.position = "left"; break;
+				case "left": this.position = "up"; break;
+			}
+			this.makeFounder(this.spart);
+		}
+	};
+	var beginAction = function(){
+		var next = main.parts.cur.nextL();
+		if(!main.parts.cur.isRLast()){
+			if(next.st == 2)
+				main.parts.cur.st = 2;
+			else{
+				main.parts.cur.st = 0;
+				next.st = 1;
+				main.parts.cur = main.parts.cur.nextL();
+				main.game.actionST.action = setTimeout(beginAction, 1000);
+				return;
+			}
+		}
+		else main.parts.cur.st = 2;
+		main.parts.cur = main.parts.first();
+		if(main.parts.cur == 2) return;
+		main.parts.cur.st = 1;
+		main.game.actionST.action = setTimeout(beginAction, 1000);
+	};
+	Event.event(window, "resize", function(){
+		resize();
+		styleParts();
+	});
+	Event.event(window, "keydown", function(event){
+		event = event || window.event;
+		switch(parseInt(event.keyCode)){
+			case 16: break; //shift
+			case 90: Event.confirm(); break; //z
+			case 88: Event.cancel(); break; //x
+			case 86: break; //v
+			case 37: Event.left(); break; //left
+			case 38: Event.up(); break; //up
+			case 39: Event.right(); break; //right
+			case 40: Event.down(); break; //down
+		}
+	});
+	var init = function(){
+		resize();
+		makeParts();
+
+		main.parts.cur = main.parts.last();
+		//main.parts.cur.st = 1;
+		//Event.style(main.parts.cur.part, "backgroundColor", "#ffffff");
+		main.game.paintST.paint = setTimeout(beginPaint, 16.7);
+		//main.game.actionST.action = setTimeout(beginAction, 1000);
+		main.founder = new Founder();
+	};
+	init();
+</script>
+</html>

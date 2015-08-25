@@ -19,6 +19,10 @@ module.exports = function(grunt) {
                 src: ["src/EF/ef.js"],
                 dest: "release/EF/ef.js"
             }
+            fo: {
+                src: ["src/Founder/founder.js"],
+                dest: "release/Founder/founder.js"
+            }
         },
         uglify:{
             options:{
@@ -48,10 +52,16 @@ module.exports = function(grunt) {
                     "release/EF/ef.min.js": ["release/EF/ef.js"]
                 }
             }
+            fo: {
+                files:{
+                    "test/scripts/founder.min.js": ["release/Founder/founder.js"],
+                    "release/EF/founder.min.js": ["release/Founder/founder.js"]
+                }
+            }
         },
         watch:{
             nOter: {
-                files: ["src/nOter/*.js", "src/Puke/*.js", "src/imager/*.js", "src/EF/*.js"],
+                files: ["src/nOter/*.js", "src/Puke/*.js", "src/imager/*.js", "src/EF/*.js", "src/Founder/*.js"],
                 tasks: ["concat:*", "uglify:*"]
             }
         }
